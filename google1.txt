@@ -1,0 +1,29 @@
+gcloud container clusters get-credentials nucleas-webserver1
+
+
+kubectl create deployment hello-app --image=gcr.io/google-samples/hello-app:2.0
+
+
+kubectl expose deployment hello-app --type=LoadBalancer --port 8081
+
+gcloud compute instance-templates create nginx-template --metadata-from-file=startup.sh
+
+gcloud compute instance-templates create nginx-template --metadata-from-file startup-script=startup.sh
+
+gcloud compute target-pools create nginx-pool --region=us-east1
+
+gcloud compute instance-groups managed create nginx-group  --base-instance-name nginx --size 2 --template nginx-template --target-pool nginx-pool
+
+gcloud compute firewall-rules create accept-tcp-rule-100 --allow tcp:80
+
+gcloud compute instance-groups managed set-named-ports nginx-group --named-ports http:80
+
+gcloud compute backend-services create nginx-backend  --protocol HTTP --http-health-checks http-basic-check --global
+
+gcloud compute backend-services add-backend nginx-backend  --instance-group nginx-group  --instance-group-zone us-east1-b  --global
+
+gcloud compute forwarding-rules create nginx-lb  --region us-east1 --ports=80 --target-pool nginx-pool
+
+gcloud compute url-maps create web-map  --default-service nginx-backend
+
+gcloud compute target-http-proxies create http-lb-proxy  --url-map web-map
